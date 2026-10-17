@@ -29,3 +29,29 @@ body {
 .animate-cursor-blink {
   animation: blink 1s step-end infinite;
 }
+
+@theme {
+  --color-paper: #ECEAE7;
+  --color-ink: #161616;
+  --color-wool: #5E6066;
+  --color-blush: #C85C4F;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .animate-cursor-blink {
+    animation: none;
+  }
+}
+
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--color-blush);
+  outline-offset: 3px;
+}
