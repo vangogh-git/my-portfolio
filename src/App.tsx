@@ -11,8 +11,8 @@ const PROFILE = {
   intro: 'Hi, I am Vani',
   email: 'you@example.com',
   about: [
-    'I’m a student developer who likes building things that feel good to use, from small web apps to full sites. I also edit video, which shapes how I think about pacing and motion on the web.',
-    'Write two or three sentences here about what you study, what you’re learning now, and what kind of work you want to do next.',
+    'I’m a simple person who stays consistent and disciplined about my goals. I try to get one percent better every day, and I’m especially keen on coding and picking up new skills. Outside of that, I love a good burger and a good movie.',
+    'Currently a BTech Undergrad doing CSE with specialization in Artificial Intelligence and Machine Learning.',
   ],
   projects: [
     {
