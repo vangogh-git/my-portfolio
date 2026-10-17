@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 /* ============================================================
    EDIT THIS BLOCK: everything on the site comes from here.
@@ -53,24 +53,28 @@ const NAV = [
 
 const SENSITIVITY = 0.8;
 
-function useTypewriter(text: string, speed = 32, startDelay = 500) {
+function useTypewriter(text: string, typeMs = 95, eraseMs = 45, holdMs = 3200, gapMs = 800) {
   const [n, setN] = useState(0);
+  const [erasing, setErasing] = useState(false);
+  const reduced =
+    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   useEffect(() => {
-    let id: number;
-    const t = window.setTimeout(() => {
-      id = window.setInterval(() => {
-        setN((v) => {
-          if (v + 1 >= text.length) window.clearInterval(id);
-          return v + 1;
-        });
-      }, speed);
-    }, startDelay);
-    return () => {
-      window.clearTimeout(t);
-      window.clearInterval(id);
-    };
-  }, [text, speed, startDelay]);
-  return { shown: text.slice(0, n), done: n >= text.length };
+    if (reduced) return setN(text.length);
+    let t: number;
+    if (!erasing) {
+      t =
+        n < text.length
+          ? window.setTimeout(() => setN(n + 1), n === 0 ? 500 : typeMs)
+          : window.setTimeout(() => setErasing(true), holdMs);
+    } else {
+      t =
+        n > 0
+          ? window.setTimeout(() => setN(n - 1), eraseMs)
+          : window.setTimeout(() => setErasing(false), gapMs);
+    }
+    return () => window.clearTimeout(t);
+  }, [n, erasing, text, reduced, typeMs, eraseMs, holdMs, gapMs]);
+  return { shown: text.slice(0, n) };
 }
 
 const pill =
@@ -94,27 +98,27 @@ export default function App() {
   const seeking = useRef(false);
   const [scrolled, setScrolled] = useState(false);
   const [copied, setCopied] = useState(false);
-  const { shown, done } = useTypewriter(PROFILE.intro);
+  const { shown } = useTypewriter(PROFILE.intro);
 
-  const seekTo = useCallback((t: number) => {
-    const v = videoRef.current;
-    if (!v || !Number.isFinite(v.duration) || v.duration <= 0) return;
-    target.current = Math.max(0, Math.min(v.duration, t));
-    if (!seeking.current && Math.abs(v.currentTime - target.current) > 0.01) {
-      seeking.current = true;
-      v.currentTime = target.current;
-    }
-  }, []);
+  const cur = useRef(0); // eased position that is actually shown
+  const seekStart = useRef(0);
+  const dotRef = useRef<HTMLDivElement>(null);
 
   const onSeeked = () => {
     seeking.current = false;
-    const v = videoRef.current;
-    if (v && Math.abs(v.currentTime - target.current) > 0.03) seekTo(target.current);
   };
 
-  // Scrub the video with horizontal mouse or touch movement while the hero is on screen
   useEffect(() => {
-    const scrub = (x: number, y: number, touch: boolean) => {
+    let raf = 0;
+    let hot = false;
+    let scale = 1;
+    const mouse = { x: -100, y: -100 };
+    const pos = { x: -100, y: -100 };
+
+    // Mouse or touch movement only moves the *goal*; the tick below eases toward it
+    const move = (x: number, y: number, touch: boolean) => {
+      mouse.x = x;
+      mouse.y = y;
       const v = videoRef.current;
       const inHero = window.scrollY < window.innerHeight * 0.6;
       if (!v || !inHero || !Number.isFinite(v.duration)) {
@@ -124,30 +128,63 @@ export default function App() {
       if (prev.current) {
         const dx = x - prev.current.x;
         const dy = y - prev.current.y;
-        if (Math.abs(dx) >= 0.5 && (!touch || Math.abs(dx) > Math.abs(dy))) {
-          seekTo(target.current + (dx / window.innerWidth) * SENSITIVITY * v.duration);
+        if (!touch || Math.abs(dx) > Math.abs(dy)) {
+          target.current = Math.max(
+            0,
+            Math.min(v.duration, target.current + (dx / window.innerWidth) * SENSITIVITY * v.duration)
+          );
         }
       }
       prev.current = { x, y };
     };
-    const onMouse = (e: MouseEvent) => scrub(e.clientX, e.clientY, false);
-    const onTouch = (e: TouchEvent) => e.touches[0] && scrub(e.touches[0].clientX, e.touches[0].clientY, true);
+
+    const tick = () => {
+      const v = videoRef.current;
+      if (v && Number.isFinite(v.duration)) {
+        cur.current += (target.current - cur.current) * 0.1;
+        const now = performance.now();
+        if (seeking.current && now - seekStart.current > 400) seeking.current = false;
+        if (!seeking.current && Math.abs(v.currentTime - cur.current) > 0.004) {
+          seeking.current = true;
+          seekStart.current = now;
+          v.currentTime = cur.current;
+        }
+      }
+      const d = dotRef.current;
+      if (d) {
+        pos.x += (mouse.x - pos.x) * 0.3;
+        pos.y += (mouse.y - pos.y) * 0.3;
+        scale += ((hot ? 3 : 1) - scale) * 0.2;
+        d.style.transform = `translate3d(${pos.x}px, ${pos.y}px, 0) translate(-50%, -50%) scale(${scale})`;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+
+    const onMouse = (e: MouseEvent) => move(e.clientX, e.clientY, false);
+    const onTouch = (e: TouchEvent) => e.touches[0] && move(e.touches[0].clientX, e.touches[0].clientY, true);
+    const onOver = (e: MouseEvent) => {
+      hot = !!(e.target as Element).closest?.('a,button');
+    };
     const reset = () => (prev.current = null);
     const onScroll = () => setScrolled(window.scrollY > window.innerHeight * 0.6);
 
     window.addEventListener('mousemove', onMouse, { passive: true });
+    window.addEventListener('mouseover', onOver, { passive: true });
     window.addEventListener('touchmove', onTouch, { passive: true });
     window.addEventListener('touchend', reset, { passive: true });
     window.addEventListener('mouseleave', reset);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => {
+      cancelAnimationFrame(raf);
       window.removeEventListener('mousemove', onMouse);
+      window.removeEventListener('mouseover', onOver);
       window.removeEventListener('touchmove', onTouch);
       window.removeEventListener('touchend', reset);
       window.removeEventListener('mouseleave', reset);
       window.removeEventListener('scroll', onScroll);
     };
-  }, [seekTo]);
+  }, []);
 
   const copyEmail = async () => {
     try {
@@ -161,6 +198,7 @@ export default function App() {
 
   return (
     <div className="font-body text-ink bg-paper">
+      <div ref={dotRef} className="cursor-dot" aria-hidden="true" />
       {/* Background video: fixed behind the hero, covered by the sections below */}
       <video
         ref={videoRef}
@@ -207,7 +245,7 @@ export default function App() {
               aria-label={PROFILE.intro}
             >
               <span aria-hidden="true">{shown}</span>
-              {!done && (
+              {(
                 <span
                   className="inline-block w-[2px] h-[1.05em] bg-ink align-middle ml-[2px] animate-cursor-blink"
                   aria-hidden="true"

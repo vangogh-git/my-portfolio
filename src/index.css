@@ -55,3 +55,32 @@ button:focus-visible {
   outline: 2px solid var(--color-blush);
   outline-offset: 3px;
 }
+
+/* Cute dot cursor: white + difference blend = black on light, light on dark */
+.cursor-dot {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: #fff;
+  mix-blend-mode: difference;
+  pointer-events: none;
+  z-index: 100;
+  will-change: transform;
+}
+
+@media (pointer: fine) {
+  html,
+  a,
+  button {
+    cursor: none;
+  }
+}
+
+@media (pointer: coarse) {
+  .cursor-dot {
+    display: none;
+  }
+}
