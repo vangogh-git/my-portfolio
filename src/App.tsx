@@ -7,8 +7,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 const VIDEO_URL = `${import.meta.env.BASE_URL}hero.mp4`;
 
 const PROFILE = {
-  name: 'Your Name',
-  intro: 'Hi, I’m Your Name. I build websites and edit video. Have a look around.',
+  name: 'Vani',
+  intro: 'Hi, I am Vani',
   email: 'you@example.com',
   about: [
     'I’m a student developer who likes building things that feel good to use, from small web apps to full sites. I also edit video, which shapes how I think about pacing and motion on the web.',
@@ -203,7 +203,7 @@ export default function App() {
           <div className="max-w-xl">
             <p
               className="mb-6"
-              style={{ fontSize: 'clamp(22px, 4vw, 30px)', lineHeight: 1.3, minHeight: '3.9em' }}
+              style={{ fontSize: 'clamp(36px, 7vw, 64px)', lineHeight: 1.1, minHeight: '1.2em' }}
               aria-label={PROFILE.intro}
             >
               <span aria-hidden="true">{shown}</span>
